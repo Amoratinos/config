@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"gopkg.in/yaml.v3"
 	"os"
@@ -22,7 +23,6 @@ type CfgHandler struct {
 func Load(opts ...any) (*CfgHandler, error) {
 
 	c := CfgHandler{
-		//data:     map[string]interface{}{},
 		flatData: map[string]any{},
 	}
 	cl, err := newCfgLoader(opts)
@@ -50,23 +50,12 @@ func Load(opts ...any) (*CfgHandler, error) {
 		c.loadEnvs = true
 	}
 
-	// load from file
-	if cl.file != nil {
-		extType := fileType(cl.file.Path)
-		if extType == ExtUnsupported {
-			return nil, fmt.Errorf("file %s is of unsuporeted type", cl.file.Path)
-		}
-		c.info(fmt.Sprintf("loading config from FILE: \"%s\"", cl.file.Path))
-		byt, err := os.ReadFile(cl.file.Path)
+	// load from files
+	if len(cl.files) > 0 {
+		err = loadFiles(&c, cl.files)
 		if err != nil {
 			return nil, err
 		}
-
-		data, err := readCfgBytes(byt, extType)
-		if err != nil {
-			return nil, err
-		}
-		flatten("", data, c.flatData)
 	}
 
 	// implicit unmarshal call
@@ -80,6 +69,42 @@ func Load(opts ...any) (*CfgHandler, error) {
 	return &c, nil
 }
 
+func loadFiles(c *CfgHandler, files []*CfgFile) error {
+	for _, file := range files {
+		extType := fileType(file.Path)
+		if extType == ExtUnsupported {
+			return fmt.Errorf("file %s is of unsuporeted type", file.Path)
+		}
+		c.info(fmt.Sprintf("loading config from FILE: \"%s\"", file.Path))
+
+		fStat, err := os.Stat(file.Path)
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) && !file.Mandatory {
+				c.info(fmt.Sprintf("FILE: \"%s\" not found, skipping because it's not mandatory", file.Path))
+				continue
+			} else {
+				return fmt.Errorf("unable to find config FILE: \"%s\"", file.Path)
+			}
+		}
+
+		if fStat.IsDir() {
+			return fmt.Errorf("the config path: \"%s\" is a directory not a file", file.Path)
+		}
+
+		byt, err := os.ReadFile(file.Path)
+		if err != nil {
+			return err
+		}
+
+		data, err := readCfgBytes(byt, extType)
+		if err != nil {
+			return err
+		}
+		flatten("", data, c.flatData)
+	}
+	return nil
+}
+
 // Defaults enables to provide a set of default values to the configuration
 type Defaults struct {
 	Item any
@@ -87,7 +112,8 @@ type Defaults struct {
 
 // CfgFile enables config to be loaded from a single file
 type CfgFile struct {
-	Path string
+	Path      string
+	Mandatory bool
 }
 
 // CfgDir enables config to be loaded from a conf.d directory,
@@ -123,8 +149,8 @@ type Writer struct {
 
 // cfgLoader holds references to options to control the order of precedence
 type cfgLoader struct {
-	def  *Defaults
-	file *CfgFile
+	def   *Defaults
+	files []*CfgFile
 	//dir    *CfgDir
 	env    *EnvVar
 	writer *Writer
@@ -138,10 +164,10 @@ func newCfgLoader(opts []any) (cfgLoader, error) {
 		case Defaults:
 			cl.def = &item
 		case CfgFile:
-			cl.file = &item
-		//case CfgDir:
-		//	// TODO implemnt
-		//	spew.Dump("CfgDir: TODO implement")
+			cl.files = append(cl.files, &item)
+		case CfgDir:
+			// TODO
+			panic("not implemented")
 		case EnvVar:
 			cl.env = &item
 		case Writer:

@@ -63,7 +63,7 @@ func TestUnmarshal(t *testing.T) {
 	}{
 		{
 			name: "load from file",
-			opts: []any{CfgFile{"sampledata/testSingleFile.yaml"}},
+			opts: []any{CfgFile{"sampledata/testSingleFile.yaml", true}},
 
 			// intentionally setting envs that do NOT apply because we did not set the Option
 			envs: map[string]string{

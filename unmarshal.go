@@ -233,7 +233,7 @@ func (c *CfgHandler) setSlice(valueField reflect.Value, fieldName string) (bool,
 		for {
 			localName := fieldName + "." + strconv.Itoa(i)
 
-			// Create a new instance of the struct
+			// Set a new instance of the struct
 			newInstance := reflect.New(valueField.Type().Elem()).Elem()
 
 			ch, err := c.setValue(newInstance, localName)
@@ -257,7 +257,7 @@ func (c *CfgHandler) setSlice(valueField reflect.Value, fieldName string) (bool,
 		for {
 			localName := fieldName + "." + strconv.Itoa(i)
 
-			// Create a new instance of the struct
+			// Set a new instance of the struct
 			newInstance := reflect.New(valueField.Type().Elem()).Elem()
 
 			// use the unmarshal function to populate the created struct

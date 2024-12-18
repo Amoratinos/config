@@ -39,16 +39,39 @@ func TestLoad(t *testing.T) {
 			expectedErr: "error loading default values: passed src is not a pointer or struct",
 		},
 		{
+			name:        "expect Err if mandatory file is not found",
+			opts:        []any{CfgFile{"sampledata/nonexistent.yaml", true}},
+			expectedErr: "unable to find config FILE: \"sampledata/nonexistent.yaml\"",
+		},
+		{
 			name: "load default and overlay with file",
-			opts: []any{Defaults{defCfg}, CfgFile{"sampledata/testSingleFile.yaml"}},
+			opts: []any{Defaults{defCfg}, CfgFile{"sampledata/testSingleFile.yaml", true}},
 			expectVal: map[string]string{
 				"default_float": "35",
 				"floatNum":      "3.14",
 			},
 		},
 		{
+			name: "allow to load multiple files",
+			opts: []any{Defaults{defCfg},
+				CfgFile{"sampledata/testSingleFile.yaml", true},
+				CfgFile{"sampledata/override.yaml", true},
+			},
+			expectVal: map[string]string{
+				"default_float": "35",
+				"floatNum":      "8.95",
+			},
+		},
+		{
+			name: "ignore non mandatory file",
+			opts: []any{Defaults{defCfg}, CfgFile{"sampledata/nonexistent.yaml", false}},
+			expectVal: map[string]string{
+				"default_float": "35",
+			},
+		},
+		{
 			name: "load default and overlay with env",
-			opts: []any{Defaults{defCfg}, CfgFile{"sampledata/testSingleFile.yaml"}, EnvVar{"TEST"}},
+			opts: []any{Defaults{defCfg}, CfgFile{"sampledata/testSingleFile.yaml", true}, EnvVar{"TEST"}},
 			envs: map[string]string{
 				"TEST_FLOATNUM": "6.65",
 			},
@@ -59,7 +82,7 @@ func TestLoad(t *testing.T) {
 		},
 		{
 			name: "load from file",
-			opts: []any{CfgFile{"sampledata/testSingleFile.yaml"}},
+			opts: []any{CfgFile{"sampledata/testSingleFile.yaml", true}},
 			// intentionally setting envs that do NOT apply because we did not set the Option
 			envs: map[string]string{
 				"IGNORE_FLOATNUM": "44.4",
