@@ -58,6 +58,15 @@ func Load(opts ...any) (*CfgHandler, error) {
 		}
 	}
 
+	// load overrides
+	if cl.overrides != nil {
+		c.info("loading override values")
+		err = flattenStruct(cl.overrides.Item, c.flatData)
+		if err != nil {
+			return nil, fmt.Errorf("error loading default values: %s", err.Error())
+		}
+	}
+
 	// implicit unmarshal call
 	if cl.unmar != nil {
 		err := c.Unmarshal(cl.unmar.Item)
@@ -110,6 +119,12 @@ type Defaults struct {
 	Item any
 }
 
+// Overrides enables to provide a set of override values to the configuration,
+// e.g. when exposing some items as cli parameters, and you want them to take precedence
+type Overrides struct {
+	Item any
+}
+
 // CfgFile enables config to be loaded from a single file
 type CfgFile struct {
 	Path      string
@@ -149,8 +164,9 @@ type Writer struct {
 
 // cfgLoader holds references to options to control the order of precedence
 type cfgLoader struct {
-	def   *Defaults
-	files []*CfgFile
+	def       *Defaults
+	overrides *Overrides
+	files     []*CfgFile
 	//dir    *CfgDir
 	env    *EnvVar
 	writer *Writer
@@ -163,6 +179,8 @@ func newCfgLoader(opts []any) (cfgLoader, error) {
 		switch item := opt.(type) {
 		case Defaults:
 			cl.def = &item
+		case Overrides:
+			cl.overrides = &item
 		case CfgFile:
 			cl.files = append(cl.files, &item)
 		case CfgDir:
