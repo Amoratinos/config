@@ -9,7 +9,7 @@ import (
 
 type myCfg struct {
 	fl  float64 `config:"default_float"`
-	fl2 float64 `config:"floatNum"`
+	fl2 float64 `config:"floatNum"` //nolint:unused // field is used in test unmarshal
 }
 
 var defCfg = myCfg{
@@ -44,11 +44,32 @@ func TestLoad(t *testing.T) {
 			expectedErr: "unable to find config FILE: \"sampledata/nonexistent.yaml\"",
 		},
 		{
+			name: "load only defaults",
+			opts: []any{Defaults{defCfg}},
+			expectVal: map[string]string{
+				"default_float": "35",
+			},
+		},
+		{
 			name: "load default and overlay with file",
 			opts: []any{Defaults{defCfg}, CfgFile{"sampledata/testSingleFile.yaml", true}},
 			expectVal: map[string]string{
 				"default_float": "35",
 				"floatNum":      "3.14",
+			},
+		},
+		{
+			name: "load default and overlay overrides",
+			opts: []any{Defaults{defCfg}, Overrides{myCfg{fl: 7.15}}},
+			expectVal: map[string]string{
+				"default_float": "7.15",
+			},
+		},
+		{
+			name: "overrides should load even without default",
+			opts: []any{Overrides{myCfg{fl: 7.15}}},
+			expectVal: map[string]string{
+				"default_float": "7.15",
 			},
 		},
 		{

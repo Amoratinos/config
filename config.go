@@ -315,6 +315,8 @@ func flattenStruct(src any, dest map[string]any) error {
 }
 
 // flattenStructRec is the inner recursive step for flattenStruct
+//
+//nolint:gocyclo// function already there when we enabled the linter
 func flattenStructRec(prefix string, item reflect.Value, dest map[string]any) {
 	if len(prefix) > 0 {
 		prefix += sep
