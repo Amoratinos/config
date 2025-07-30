@@ -24,7 +24,7 @@ const sep = "."
 
 // internal recursive unmarshal function, it returns true if any change was made to the passed pointer
 //
-//nolint:gocognit
+//nolint:gocognit// accepted complexity for now
 func (c *CfgHandler) unmarshal(item reflect.Value, prefix string) (bool, error) {
 	if len(prefix) > 0 {
 		prefix += sep
@@ -116,7 +116,7 @@ var boolValues = []string{
 // in order of precedence it checks first if the field name is present in the flattened map
 // and then overrides with ENVs if any is found for the same key
 //
-//nolint:gocognit,nestif
+//nolint:gocognit,nestif// accepted complexity for now
 func (c *CfgHandler) setValue(valueField reflect.Value, fieldName string) (bool, error) {
 
 	var val reflect.Value
@@ -208,6 +208,7 @@ func (c *CfgHandler) setValue(valueField reflect.Value, fieldName string) (bool,
 }
 
 func loadFileContent(path string) (string, error) {
+	//#nosec G304 - File will only be unmarshalled into struct
 	b, err := os.ReadFile(path)
 	if err != nil {
 		return "", err
