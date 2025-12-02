@@ -147,7 +147,11 @@ func (c *CfgHandler) setValue(valueField reflect.Value, fieldName string) (bool,
 			c.Debug(fmt.Sprintf("setting value of field \"%s\" from ENV", fieldName))
 		case reflect.Bool:
 			if slices.Contains(boolValues, envVal) {
-				val = reflect.ValueOf(envVal)
+				boolVal, err := strconv.ParseBool(envVal)
+				if err != nil {
+					return changed, fmt.Errorf("unable to convert env to bool %s", err)
+				}
+				val = reflect.ValueOf(boolVal)
 				changed = true
 				c.Debug(fmt.Sprintf("setting value of field \"%s\" from ENV", fieldName))
 			}
