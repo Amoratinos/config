@@ -4,12 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
+
+	"gopkg.in/yaml.v3"
 )
 
 type CfgHandler struct {
@@ -34,7 +35,7 @@ func Load(opts ...any) (*CfgHandler, error) {
 		c.writter = cl.writer.Fn
 	}
 
-	// load defaults
+	// Load order: defaults -> config file -> .env -> explicit env vars (highest precedence)
 	if cl.def != nil {
 		c.info("loading default values")
 		err = flattenStruct(cl.def.Item, c.flatData)
@@ -43,17 +44,23 @@ func Load(opts ...any) (*CfgHandler, error) {
 		}
 	}
 
-	// enable envs
+	if len(cl.files) > 0 {
+		err = loadFiles(&c, cl.files)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// enable Env vars
 	if cl.env != nil {
 		c.info(fmt.Sprintf("using ENVS with prefix \"%s\"", cl.env.Prefix))
 		c.envPrefix = cl.env.Prefix
 		c.loadEnvs = true
 	}
 
-	// load from files
-	if len(cl.files) > 0 {
-		err = loadFiles(&c, cl.files)
-		if err != nil {
+	// .env overlays config file; explicit env vars (already set) override .env
+	if cl.envFile != nil {
+		if err := loadEnvFile(&c, cl.envFile.Path, cl.envFile.Mandatory); err != nil {
 			return nil, err
 		}
 	}
@@ -168,9 +175,10 @@ type cfgLoader struct {
 	overrides *Overrides
 	files     []*CfgFile
 	//dir    *CfgDir
-	env    *EnvVar
-	writer *Writer
-	unmar  *Unmarshal
+	envFile *EnvFile
+	env     *EnvVar
+	writer  *Writer
+	unmar   *Unmarshal
 }
 
 func newCfgLoader(opts []any) (cfgLoader, error) {
@@ -186,6 +194,8 @@ func newCfgLoader(opts []any) (cfgLoader, error) {
 		case CfgDir:
 			// TODO
 			panic("not implemented")
+		case EnvFile:
+			cl.envFile = &item
 		case EnvVar:
 			cl.env = &item
 		case Writer:

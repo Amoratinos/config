@@ -23,7 +23,7 @@ const sep = "."
 
 // internal recursive unmarshal function, it returns true if any change was made to the passed pointer
 //
-//nolint:gocognit// accepted complexity for now
+//nolint:gocognit,gocyclo // accepted complexity for now
 func (c *CfgHandler) unmarshal(item reflect.Value, prefix string) (bool, error) {
 	if len(prefix) > 0 {
 		prefix += sep
@@ -83,6 +83,37 @@ func (c *CfgHandler) unmarshal(item reflect.Value, prefix string) (bool, error) 
 				changed = true
 			}
 
+		case reflect.Ptr:
+			elem := valueField.Type().Elem()
+			if valueField.IsNil() {
+				valueField.Set(reflect.New(elem))
+			}
+			inner := valueField.Elem()
+			switch inner.Kind() {
+			case reflect.Struct:
+				ch, err := c.unmarshal(valueField, fieldName)
+				if err != nil {
+					return changed, err
+				}
+				if ch {
+					changed = true
+				}
+			case reflect.Bool,
+				reflect.String,
+				reflect.Float64,
+				reflect.Float32,
+				reflect.Int:
+				ch, err := c.setValue(inner, fieldName)
+				if err != nil {
+					return changed, err
+				}
+				if ch {
+					changed = true
+				}
+			default:
+				return changed, fmt.Errorf("unhandled pointer-to type: %q in struct", inner.Kind())
+			}
+
 		default:
 			return changed, fmt.Errorf("unhandled type: \"%s\" in struct", valueField.Kind())
 		}
@@ -130,11 +161,11 @@ func (c *CfgHandler) setValue(valueField reflect.Value, fieldName string) (bool,
 			changed = true
 			c.Debug(fmt.Sprintf("setting value of field \"%s\" from ENV", fieldName))
 		case reflect.Bool:
-			data, err := strconv.ParseBool(envVal)
+			boolVal, err := strconv.ParseBool(envVal)
 			if err != nil {
-				return changed, fmt.Errorf("unable to convert env to bool %s", err)
+				return changed, fmt.Errorf("unable to convert env value to bool %w", err)
 			}
-			val = reflect.ValueOf(data)
+			val = reflect.ValueOf(boolVal)
 			changed = true
 			c.Debug(fmt.Sprintf("setting value of field \"%s\" from ENV", fieldName))
 		case
